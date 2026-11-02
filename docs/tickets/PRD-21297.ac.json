@@ -1,0 +1,166 @@
+[
+  {
+    "id": "TC1",
+    "ac": "AC1",
+    "text": "Given valid credentials and a JQL query, When atlassian_jira_search_issues is called, Then the request is built with that JQL and a capped limit, and a no-match response returns an empty issues list (not an error)",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_jira_search_issues_builds_jql_search_request"]
+  },
+  {
+    "id": "TC2",
+    "ac": "AC1",
+    "type": "manual",
+    "text": "Given a real Jira Cloud site and a JQL query matching real issues, When atlassian_jira_search_issues is called, Then the live matching issues are returned",
+    "steps": [
+      "Set X-Atlassian-Site/X-Atlassian-Email/X-Atlassian-Api-Token to a real Jira Cloud sandbox account",
+      "Call atlassian_jira_search_issues with a JQL query known to match at least one issue",
+      "Inspect the returned issues list"
+    ],
+    "expect": "Returned issues include key/summary/status/assignee/updated matching what the Jira UI shows for that JQL",
+    "result": "untested",
+    "notes": "needs a real vendor account; not available at design time, not a blocker per SOP"
+  },
+  {
+    "id": "TC3",
+    "ac": "AC2",
+    "text": "Given a valid issue key, When atlassian_jira_get_issue is called, Then key/summary/status/assignee/description/comment_count are returned from the mocked Jira response",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_jira_get_issue_returns_structured_fields"]
+  },
+  {
+    "id": "TC4",
+    "ac": "AC2",
+    "type": "manual",
+    "text": "Given a non-existent issue key, When atlassian_jira_get_issue is called against a real site, Then a structured not_found error is returned (no 500, no stack trace)",
+    "steps": [
+      "Call atlassian_jira_get_issue with an issue key that does not exist on the real sandbox site",
+      "Inspect the response"
+    ],
+    "expect": "Response is {\"error\": {\"code\": \"not_found\", ...}}, not an unhandled exception",
+    "result": "untested",
+    "notes": "needs a real vendor account"
+  },
+  {
+    "id": "TC5",
+    "ac": "AC3",
+    "text": "Given project key, summary, issue type, and description, When atlassian_jira_create_issue is called, Then the required fields are sent to Jira and a non-existent project key maps to invalid_argument",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_jira_create_issue_sends_required_fields"]
+  },
+  {
+    "id": "TC6",
+    "ac": "AC3",
+    "type": "manual",
+    "text": "Given a real sandbox project, When atlassian_jira_create_issue is called, Then a real issue is created and its key and URL are returned",
+    "steps": [
+      "Call atlassian_jira_create_issue against a real sandbox project with a summary and issue type",
+      "Open the returned issue URL in the browser"
+    ],
+    "expect": "The issue exists in Jira with the given summary; URL resolves to it",
+    "result": "untested",
+    "notes": "needs a real vendor account"
+  },
+  {
+    "id": "TC7",
+    "ac": "AC4",
+    "text": "Given an issue key and a subset of fields to change, When atlassian_jira_update_issue is called, Then only the supplied fields are included in the PUT body, and an unsupported field name maps to invalid_argument naming the field",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_jira_update_issue_sends_only_changed_fields"]
+  },
+  {
+    "id": "TC8",
+    "ac": "AC5",
+    "text": "Given an issue key and a target status that is not a valid transition from the current status, When atlassian_jira_transition_issue is called, Then the error response lists the transitions that are actually available",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_jira_transition_issue_lists_available_transitions_on_invalid_target"]
+  },
+  {
+    "id": "TC9",
+    "ac": "AC5",
+    "type": "manual",
+    "text": "Given an issue key and a valid target status, When atlassian_jira_transition_issue is called against a real site, Then the issue moves to that status",
+    "steps": [
+      "Call atlassian_jira_transition_issue with a real issue key and a status reachable from its current state",
+      "Reload the issue in the Jira UI"
+    ],
+    "expect": "The issue's status in Jira matches the requested target status",
+    "result": "untested",
+    "notes": "needs a real vendor account"
+  },
+  {
+    "id": "TC10",
+    "ac": "AC6",
+    "text": "Given an issue key and comment text, When atlassian_jira_add_comment is called, Then the comment body is posted to Jira and the returned comment id is surfaced",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_jira_add_comment_posts_comment_body"]
+  },
+  {
+    "id": "TC11",
+    "ac": "AC7",
+    "text": "When atlassian_jira_list_projects is called with no filter, Then the mocked project list response is mapped to key/name/project type for every project",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_jira_list_projects_returns_key_and_name"]
+  },
+  {
+    "id": "TC12",
+    "ac": "AC8",
+    "text": "Given a CQL query, When atlassian_confluence_search_pages is called, Then the request is built with that CQL and a capped limit, and a no-match response returns an empty pages list (not an error)",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_confluence_search_pages_builds_cql_request"]
+  },
+  {
+    "id": "TC13",
+    "ac": "AC9",
+    "text": "Given a valid page id, When atlassian_confluence_get_page is called, Then title/space/body/version are returned from the mocked response, and a non-existent page id maps to not_found",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_confluence_get_page_returns_storage_body"]
+  },
+  {
+    "id": "TC14",
+    "ac": "AC10",
+    "text": "Given a space key, title, and body where the title already exists in that space/parent, When atlassian_confluence_create_page is called, Then Confluence's duplicate-title 400 is mapped to a structured invalid_argument error, not a raw 500",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_confluence_create_page_maps_duplicate_title_to_invalid_argument"]
+  },
+  {
+    "id": "TC15",
+    "ac": "AC10",
+    "type": "manual",
+    "text": "Given a real sandbox space, When atlassian_confluence_create_page is called with a new title, Then a real page is created and its id and URL are returned",
+    "steps": [
+      "Call atlassian_confluence_create_page against a real sandbox space with a new title and body",
+      "Open the returned page URL in the browser"
+    ],
+    "expect": "The page exists in Confluence with the given title and body",
+    "result": "untested",
+    "notes": "needs a real vendor account"
+  },
+  {
+    "id": "TC16",
+    "ac": "AC11",
+    "text": "Given a page id, new body, and current version, When atlassian_confluence_update_page is called, Then the version increments by one on success, and a stale version number maps to a structured conflict error instead of silently overwriting",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_confluence_update_page_increments_version"]
+  },
+  {
+    "id": "TC17",
+    "ac": "AC12",
+    "text": "When atlassian_confluence_list_spaces is called with no filter, Then the mocked space list response is mapped to key/name for every space",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_confluence_list_spaces_returns_key_and_name"]
+  },
+  {
+    "id": "TC18",
+    "ac": "AC13",
+    "text": "Given a request missing one or more of X-Atlassian-Site/Email/Api-Token, When any tool is called, Then the service returns 401 listing exactly the missing header names, and no outbound call is made to Atlassian",
+    "type": "auto",
+    "tests": ["tests/test_middleware.py::test_missing_credential_header_returns_401_with_required_list"]
+  },
+  {
+    "id": "TC19",
+    "ac": "AC14",
+    "text": "Given two concurrent requests carrying different X-Atlassian-Site credentials, When both call a tool at the same time, Then neither response contains the other tenant's data, confirming no global/module state leaks credentials across requests",
+    "type": "auto",
+    "tests": ["tests/test_middleware.py::test_credentials_are_not_shared_across_concurrent_requests"]
+  }
+]
