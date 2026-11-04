@@ -1,5 +1,7 @@
 # PRD-21297 · Code review
 
+Status: frozen @ fbe9e34
+
 ## Round 1 · 2026-11-04 · reviewed dev/PRD-21297 @ 1c96663 (base main @ 4348cb8)
 
 Verdict: changes requested
@@ -37,3 +39,22 @@ Verdict: changes requested
    - **Known limitation carried forward, not introduced by this fix**: the Self-test's `tools/list` manual smoke (12 tools over real HTTP transport) could not be reproduced in this environment on this round — an isolated check on the pre-fix, already-reviewed commit `1c96663` shows the identical behavior (`tools/list` and `tools/call` both return an empty/unknown-tool result over the real ASGI transport in this sandbox, while `mcp.list_tools()` called in-process still correctly returns all 12 tools, matching the passing `test_tools_list_snapshot_has_12_tools_with_expected_names` unit test). This pre-dates and is unrelated to both round-1 fixes above (neither touches `server.py`, tool registration, or `middleware.py`'s routing) — recorded here as a known environment gap, not fixed as part of this round since it is out of scope for the two listed must-fix items; flagged for whoever next runs this smoke test with a working real-transport `tools/call` round trip (also the subject of this round's non-blocking suggestion).
 
 Both round-1 must-fix findings have a fix commit and a re-run gate recorded above: finding 2's code fix is `88c5fa7`, finding 1's doc fix is `958a3ec`, this Fixes section itself is `d75f886` — all on `dev/PRD-21297`. Round-2 verdict is for the next review pass.
+
+## Round 2 · 2026-11-04 · reviewed dev/PRD-21297 @ fbe9e34 (base main @ 4348cb8)
+
+Verdict: approved
+
+### Round-1 fixes re-checked
+
+1. **Finding 1** (Chinese quote + false Self-test claim) — confirmed fixed. `docs/tickets/PRD-21297.md:283` no longer quotes Chinese text (now "the Checklist's agent-driven end-to-end walkthrough item", English only). Independently re-ran `grep -rnP '[\x{4e00}-\x{9fff}]' --exclude-dir=.git --exclude-dir=.venv .` on `fbe9e34`: 3 hits, all inside `docs/tickets/PRD-21297-review.md`'s own quoted citations of the original Chinese SOP/Checklist text in this file's Round 1 Findings section above (evidentiary quoting of a now-fixed violation, written by the review leg itself, not a new instance of it — Round 1's finding named `docs/tickets/PRD-21297.md`, not this review record). Re-ran the same scan with `--exclude=PRD-21297-review.md`: no output — the deliverable tree (code, README, main doc) is Chinese-free. The Self-test's "Chinese-character scan" bullet in `docs/tickets/PRD-21297.md` now states this precisely instead of a blanket claim.
+2. **Finding 2** (no structured audit log) — confirmed fixed, and confirmed effective. Read `src/atlassian_mcp/errors.py::as_tool_result`: generates a fresh per-call `request_id` via a `ContextVar` (`_call_id`, default `None`, `set`/`reset` in a `finally`, never a shared mutable global — matches SOP §14's request-isolation requirement), logs one `tool call done` line on every path (success, expected `AtlassianMcpError`, unexpected exception) with `request_id` / `tool_name` / `outcome` / `latency_ms`. Read `clients/base.py::request_with_retry`: logs one `atlassian call` line per outbound HTTP call with the same `request_id`, `method`, `endpoint`, `status`, `latency_ms`. Traced every call site in `clients/jira_client.py` and `clients/confluence_client.py`: the `url` / `endpoint` argument passed to `request_with_retry` is always a bare path literal (e.g. `/rest/api/3/issue/{key}`, `/wiki/api/v2/pages/{page_id}`); JQL (`jira_tools.atlassian_jira_search_issues`) and CQL go in the JSON body or `params=`, never in the logged `url` string, so they are never logged — confirms the Fixes section's claim rather than taking it on faith. The added `_configure_default_logging()` catch (production never called `logging.basicConfig()`; `uvicorn atlassian_mcp.server:app` never runs `server.main()`, so the new `.info()` calls would have been silently dropped at the default `WARNING` level in a real deployment even though `caplog`-based tests would still pass) is a real, correctly-scoped fix — it only configures the single `atlassian_mcp`-named logger, not the root logger, and is idempotent (`if not logger.handlers`). `transition_issue` (two outbound calls — `GET transitions` then `POST transitions`) still reuses one `httpx.AsyncClient` per tool call via `async with build_client(creds) as client:`, unaffected by this change (SOP §14 "一次请求内复用同一个 HTTP client" still holds).
+
+### Independently re-verified on `fbe9e34` (not just reading the Fixes section's claims)
+
+- `uv sync` then `uv run pytest -q`: **24 passed**, 0 failed — matches the Fixes section's claim exactly.
+- `uv lock --check`: resolves cleanly, no new dependency.
+- Chinese-character scan (both with and without excluding the review file): matches the Fixes section's claim exactly (see Finding 1 above).
+- README "MSPbots Connector" section (`README.md` lines 11–81) diffed byte-for-byte against `~/.claude/skills/vendor-mcp-development/reference/readme-connector-section.md`: exact match; still positioned before the "Authentication headers" Header-credential table (line 83), per SOP §0.5/§14.
+- `tests/test_observability.py`'s 4 new tests read correctly: they assert the two log lines share one `request_id`, assert `outcome=invalid_argument` on the expected-error path, and assert neither the credential header values nor the JQL text sent appear in the captured log text.
+
+No new must-fix in the round-1→round-2 diff (`22c17b2...fbe9e34`: `docs/tickets/PRD-21297.md`, `docs/tickets/PRD-21297-review.md`, `src/atlassian_mcp/{errors.py,clients/base.py,tools/jira_tools.py,tools/confluence_tools.py}`, `tests/test_observability.py` — all in scope for the two round-1 findings, no unrelated changes). Round 1's one suggestion (add a real-transport `tools/call` smoke) was not acted on and remains open as a suggestion; it was never a must-fix and does not block approval.
