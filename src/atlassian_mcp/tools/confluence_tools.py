@@ -21,7 +21,9 @@ async def atlassian_confluence_search_pages(cql: str, limit: int = 25) -> str:
     error.
     """
     creds = current_credentials()
-    return await as_tool_result(confluence_client.search_pages(creds, cql, limit=limit))
+    return await as_tool_result(
+        confluence_client.search_pages(creds, cql, limit=limit), tool_name="atlassian_confluence_search_pages"
+    )
 
 
 @mcp.tool(
@@ -35,7 +37,9 @@ async def atlassian_confluence_get_page(page_id: str) -> str:
     error.
     """
     creds = current_credentials()
-    return await as_tool_result(confluence_client.get_page(creds, page_id))
+    return await as_tool_result(
+        confluence_client.get_page(creds, page_id), tool_name="atlassian_confluence_get_page"
+    )
 
 
 @mcp.tool(
@@ -61,7 +65,8 @@ async def atlassian_confluence_create_page(
             title=title,
             body_html=body_html,
             parent_id=parent_id,
-        )
+        ),
+        tool_name="atlassian_confluence_create_page",
     )
 
 
@@ -83,7 +88,8 @@ async def atlassian_confluence_update_page(page_id: str, body_html: str, current
             page_id=page_id,
             body_html=body_html,
             current_version=current_version,
-        )
+        ),
+        tool_name="atlassian_confluence_update_page",
     )
 
 
@@ -97,4 +103,6 @@ async def atlassian_confluence_list_spaces(limit: int = 25) -> str:
     cap 100).
     """
     creds = current_credentials()
-    return await as_tool_result(confluence_client.list_spaces(creds, limit=limit))
+    return await as_tool_result(
+        confluence_client.list_spaces(creds, limit=limit), tool_name="atlassian_confluence_list_spaces"
+    )

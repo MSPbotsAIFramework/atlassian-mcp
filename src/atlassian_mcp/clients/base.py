@@ -11,12 +11,16 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import logging
+import time
 from dataclasses import dataclass
 
 import httpx
 
-from atlassian_mcp.errors import AtlassianMcpError, map_http_status
+from atlassian_mcp.errors import AtlassianMcpError, current_call_id, map_http_status
 from atlassian_mcp.middleware import AtlassianCredentials
+
+logger = logging.getLogger("atlassian_mcp")
 
 CONNECT_TIMEOUT_S = 5.0
 READ_TIMEOUT_S = 30.0
@@ -60,9 +64,18 @@ async def request_with_retry(
     Raises AtlassianMcpError (network failure -> upstream_error) rather than
     letting httpx exceptions escape -- tool code never has to catch httpx
     errors itself.
+
+    Logs exactly one audit line per call (endpoint + HTTP status + latency,
+    tagged with the in-flight tool call's request id -- see
+    `errors.current_call_id`), on both the success and the retried-then-still-
+    failing path. `url` here is always the bare path literal each client
+    module passes in (e.g. `/rest/api/3/issue/{key}`), never a full URL with
+    query string, so this never logs JQL/CQL text or other query values; the
+    request/response bodies and header values are never logged either.
     """
     total_waited = 0.0
     last_response: httpx.Response | None = None
+    started = time.monotonic()
 
     for attempt in range(MAX_RETRIES + 1):
         try:
@@ -86,6 +99,14 @@ async def request_with_retry(
         total_waited += delay
 
     assert last_response is not None
+    logger.info(
+        "atlassian call request_id=%s method=%s endpoint=%s status=%s latency_ms=%.1f",
+        current_call_id(),
+        method,
+        url,
+        last_response.status_code,
+        (time.monotonic() - started) * 1000,
+    )
     try:
         body = last_response.json() if last_response.content else None
     except ValueError:

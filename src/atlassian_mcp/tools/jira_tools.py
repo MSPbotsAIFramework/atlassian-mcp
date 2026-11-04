@@ -25,7 +25,10 @@ async def atlassian_jira_search_issues(
     never an error. `fields` restricts which issue fields are returned.
     """
     creds = current_credentials()
-    return await as_tool_result(jira_client.search_issues(creds, jql, limit=limit, fields=fields))
+    return await as_tool_result(
+        jira_client.search_issues(creds, jql, limit=limit, fields=fields),
+        tool_name="atlassian_jira_search_issues",
+    )
 
 
 @mcp.tool(
@@ -38,7 +41,7 @@ async def atlassian_jira_get_issue(issue_key: str) -> str:
     An issue key that does not exist returns a structured not_found error.
     """
     creds = current_credentials()
-    return await as_tool_result(jira_client.get_issue(creds, issue_key))
+    return await as_tool_result(jira_client.get_issue(creds, issue_key), tool_name="atlassian_jira_get_issue")
 
 
 @mcp.tool(
@@ -63,7 +66,8 @@ async def atlassian_jira_create_issue(
             summary=summary,
             issue_type=issue_type,
             description=description,
-        )
+        ),
+        tool_name="atlassian_jira_create_issue",
     )
 
 
@@ -78,7 +82,9 @@ async def atlassian_jira_update_issue(issue_key: str, fields: dict) -> str:
     error naming the rejected field.
     """
     creds = current_credentials()
-    return await as_tool_result(jira_client.update_issue(creds, issue_key, fields))
+    return await as_tool_result(
+        jira_client.update_issue(creds, issue_key, fields), tool_name="atlassian_jira_update_issue"
+    )
 
 
 @mcp.tool(
@@ -92,7 +98,9 @@ async def atlassian_jira_transition_issue(issue_key: str, target_status: str) ->
     listing the transitions that are actually available.
     """
     creds = current_credentials()
-    return await as_tool_result(jira_client.transition_issue(creds, issue_key, target_status))
+    return await as_tool_result(
+        jira_client.transition_issue(creds, issue_key, target_status), tool_name="atlassian_jira_transition_issue"
+    )
 
 
 @mcp.tool(
@@ -104,7 +112,9 @@ async def atlassian_jira_add_comment(issue_key: str, body: str) -> str:
     Returns the new comment's id.
     """
     creds = current_credentials()
-    return await as_tool_result(jira_client.add_comment(creds, issue_key, body))
+    return await as_tool_result(
+        jira_client.add_comment(creds, issue_key, body), tool_name="atlassian_jira_add_comment"
+    )
 
 
 @mcp.tool(
@@ -117,4 +127,6 @@ async def atlassian_jira_list_projects(limit: int = 25) -> str:
     (default 25, hard cap 100).
     """
     creds = current_credentials()
-    return await as_tool_result(jira_client.list_projects(creds, limit=limit))
+    return await as_tool_result(
+        jira_client.list_projects(creds, limit=limit), tool_name="atlassian_jira_list_projects"
+    )
